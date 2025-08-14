@@ -18,4 +18,14 @@ export default [
       auth: false,
     },
   },
+  {
+    method: 'POST',
+    path: '/import-users',
+    // name of the controller file & the method.
+    handler: 'controller.importUsers',
+    config: {
+      policies: [],
+      auth: false,
+    },
+  },
 ];
