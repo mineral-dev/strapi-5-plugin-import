@@ -15,6 +15,7 @@ const XLSX = require("xlsx");
 const fs = require("fs");
 const path = require("path");
 const dayjs = require("dayjs");
+const { generateFromEmail, generateUsername } = require("unique-username-generator");
 const controller = ({ strapi }) => ({
   index(ctx) {
     ctx.body = strapi.plugin("strapi-5-plugin-import").service("service").getWelcomeMessage();
@@ -77,13 +78,23 @@ const controller = ({ strapi }) => ({
       if (data && data?.length > 0) {
         for (const order of data) {
           const { order_items, ...props } = order;
+          let user_id = null;
+          if (order.email) {
+            const user = await strapi.db.query("plugin::users-permissions.user").findOne({
+              where: { email: order.email }
+            });
+            if (user) {
+              user_id = user.id;
+            }
+          }
           let data_order = {
             ...props,
             documentId: props.uuid,
             mobile: props.mobile ? props.mobile.toString() : null,
             airwaybill_no: props.airwaybill_no ? props.airwaybill_no.toString() : null,
             va_number: props.va_number ? formatVaNumber(props.va_number) : null,
-            order_id: props.order_no
+            order_id: props.order_no,
+            user_id: user_id ? user_id : null
           };
           const orderItems = JSON.parse(order_items);
           if (orderItems && orderItems?.length > 0) {
@@ -118,6 +129,92 @@ const controller = ({ strapi }) => ({
           } catch (error) {
             console.dir(error, { depth: null });
           }
+        }
+      }
+      return ctx.send({ message: `${result.length} rows imported.` });
+    } catch (err) {
+      console.error("Import error:", err);
+      return ctx.internalServerError("Failed to import.");
+    } finally {
+      fs.unlink(filePath, (err) => {
+        if (err) console.error("Failed to delete temp file:", err);
+      });
+    }
+  },
+  async importUsers(ctx) {
+    const { files } = ctx.request;
+    if (!files || !files.file) {
+      return ctx.badRequest("No file uploaded");
+    }
+    const uploadedFile = files.file;
+    const filePath = uploadedFile.filepath;
+    const fileName = uploadedFile.originalFilename;
+    path.extname(fileName).toLowerCase();
+    try {
+      const fileBuffer = fs.readFileSync(filePath);
+      const dateFieldsDateOnly = ["dob"];
+      const dateFieldsDateTime = ["created_at", "updated_at"];
+      const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const dataCsv = XLSX.utils.sheet_to_json(sheet, { raw: true });
+      let result = [];
+      let data_user = [];
+      const data = dataCsv.map((row) => {
+        if (row.uuid) {
+          row.uuid = cleanUuid(row.uuid);
+        }
+        dateFieldsDateOnly.forEach((field) => {
+          if (row[field]) {
+            const d = parseExcelOrString(row[field]);
+            row[field] = d.isValid() ? d.format("YYYY-MM-DD") : null;
+          } else {
+            row[field] = null;
+          }
+        });
+        dateFieldsDateTime.forEach((field) => {
+          if (row[field]) {
+            const d = parseExcelOrString(row[field]);
+            row[field] = d.isValid() ? d.toISOString() : null;
+          } else {
+            row[field] = null;
+          }
+        });
+        return row;
+      });
+      for (const user of data) {
+        let payload = {
+          username: generateFromEmail(user.email),
+          email: user.email,
+          password: user.password,
+          confirmed: true,
+          blocked: false,
+          fullname: user?.name || generateUsername(),
+          address: "",
+          country: user.country || "",
+          province: user.province || "",
+          city: user.city || "",
+          district: user.district || "",
+          postal_code: user.postal_code || "",
+          mobile: user?.mobile || "",
+          gender: "male",
+          member_level: user.member_level || 0,
+          meta_data: user.meta || null,
+          created_at: user.created_at,
+          published_at: user.created_at,
+          updated_at: user.updated_at,
+          subscribe_newsletters: false
+        };
+        if (user.dob && /^\d{4}-\d{2}-\d{2}$/.test(user.dob)) {
+          payload.dob = user.dob;
+        }
+        try {
+          const response = await strapi.db.query("plugin::users-permissions.user").create({
+            data: payload,
+            populate: true
+          });
+          result.push(response);
+        } catch (error) {
+          console.dir(error, { depth: null });
         }
       }
       return ctx.send({ message: `${result.length} rows imported.` });
@@ -203,6 +300,16 @@ const contentAPIRoutes = [
       policies: [],
       auth: false
     }
+  },
+  {
+    method: "POST",
+    path: "/import-users",
+    // name of the controller file & the method.
+    handler: "controller.importUsers",
+    config: {
+      policies: [],
+      auth: false
+    }
   }
 ];
 const routes = {
@@ -232,3 +339,4 @@ const index = {
   services
 };
 module.exports = index;
+//# sourceMappingURL=index.js.map
