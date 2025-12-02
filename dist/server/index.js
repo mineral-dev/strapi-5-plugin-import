@@ -118,16 +118,46 @@ const controller = ({ strapi }) => ({
             }
             data_order.order_item = variants;
           }
+          let entry = null;
           try {
-            const response = await strapi.documents("api::order.order").create({
-              data: data_order,
+            const find_order = await strapi.documents("api::order.order").findFirst({
+              filters: {
+                order_id: {
+                  $eq: props.order_no
+                }
+              },
               populate: {
                 order_item: true
               }
             });
-            result.push(response);
+            entry = find_order;
           } catch (error) {
-            console.dir(error, { depth: null });
+            console.log("get user existing");
+          }
+          if (entry) {
+            try {
+              const response = await strapi.documents("api::order.order").update({
+                documentId: entry.documentId,
+                data: data_order
+              });
+              console.log({ response }, "update order");
+              result.push(response);
+            } catch (error) {
+              console.dir(error, { depth: null });
+            }
+          } else {
+            try {
+              const response = await strapi.documents("api::order.order").create({
+                data: data_order,
+                populate: {
+                  order_item: true
+                }
+              });
+              console.log({ response }, "create order");
+              result.push(response);
+            } catch (error) {
+              console.dir(error, { depth: null });
+            }
           }
         }
       }
