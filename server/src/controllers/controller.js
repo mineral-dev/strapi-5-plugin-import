@@ -222,31 +222,60 @@ const controller = ({ strapi }) => ({
           province: user.province || "",
           city: user.city || "",
           district: user.district || "",
-          postal_code: user.postal_code || "",
-          mobile: user?.mobile || "",
+          postal_code: Number(user.postal_code) || null,
+          mobile: String(user?.mobile) || "",
           gender: "male",
           member_level: user.member_level || 0,
-          meta_data: user.meta || null,
+          meta_data: JSON.stringify(user.meta) || null,
           created_at: user.created_at,
           published_at: user.created_at,
           updated_at: user.updated_at,
           subscribe_newsletters: false,
         }
-
         if (user.dob && /^\d{4}-\d{2}-\d{2}$/.test(user.dob)) {
           payload.dob = user.dob;
         }
+
+        let entry = null
+
         try {
-          const response = await strapi.db.query("plugin::users-permissions.user").create({
-            data: payload,
-            populate: true
-          })
-
-          result.push(response)
+          const find_user = await strapi
+            .documents('plugin::users-permissions.user')
+            .findFirst({
+              filters: {
+                email: {
+                  $eq: payload.email,
+                },
+              },
+            });
+          entry = find_user
         } catch (error) {
-          console.dir(error, { depth: null })
+          console.log("get user existing")
         }
-
+        
+        if(entry) {
+          try {
+            const response = await strapi.documents('plugin::users-permissions.user').update({ 
+              documentId: entry.documentId,
+              data: payload
+            })
+            console.log({ response })
+            result.push(response)
+          } catch (error) {
+            console.dir(error, { depth: null })
+          }
+        }else{
+          try {
+            const response = await strapi.db.query("plugin::users-permissions.user").create({
+              data: payload,
+              populate: true
+            })
+  
+            result.push(response)
+          } catch (error) {
+            console.dir(error, { depth: null })
+          }
+        }
       }
 
       return ctx.send({ message: `${result.length} rows imported.` });
