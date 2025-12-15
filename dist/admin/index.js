@@ -37,7 +37,7 @@ const index = {
         defaultMessage: "Import"
       },
       Component: async () => {
-        const { App } = await Promise.resolve().then(() => require("../_chunks/App-DKGmBwao.js"));
+        const { App } = await Promise.resolve().then(() => require("../_chunks/App-DDJsyOAN.js"));
         return App;
       }
     });

@@ -36,12 +36,12 @@ const HomePage = () => {
   };
 
   const handleImportUser = async () => {
-    if (!file) return;
+    if (!fileUser) return;
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileUser);
 
-    setUploading(true);
+    setUploadingUser(true);
     try {
       const res = await fetch('/api/strapi-5-plugin-import/import-users', {
         method: 'POST',
@@ -54,7 +54,7 @@ const HomePage = () => {
       console.error('Error uploading file:', err);
       alert('Gagal mengimport file.');
     } finally {
-      setUploading(false);
+      setUploadingUser(false);
     }
   };
 

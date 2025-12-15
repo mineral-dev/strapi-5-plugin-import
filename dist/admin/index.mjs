@@ -36,7 +36,7 @@ const index = {
         defaultMessage: "Import"
       },
       Component: async () => {
-        const { App } = await import("../_chunks/App-CA8adkoe.mjs");
+        const { App } = await import("../_chunks/App-CPNbIjMN.mjs");
         return App;
       }
     });
