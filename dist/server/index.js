@@ -94,7 +94,10 @@ const controller = ({ strapi }) => ({
             airwaybill_no: props.airwaybill_no ? props.airwaybill_no.toString() : null,
             va_number: props.va_number ? formatVaNumber(props.va_number) : null,
             order_id: props.order_no,
-            user_id: user_id ? user_id : null
+            user_id: user_id ? user_id : null,
+            createdAt: props?.created_at,
+            updatedAt: props?.updated_at,
+            cancelled_at: props.cancelled_at ? excelDateToISO(props.cancelled_at) : null
           };
           const orderItems = JSON.parse(order_items);
           if (orderItems && orderItems?.length > 0) {
@@ -134,31 +137,7 @@ const controller = ({ strapi }) => ({
           } catch (error) {
             console.log("get user existing");
           }
-          if (entry) {
-            const order_items2 = (entry.order_item || []).map((variant) => {
-              const findVariantId = skus.find((item) => item.sku === variant.sku);
-              return {
-                id: variant.id,
-                name: findVariantId ? findVariantId.title : null,
-                slug: findVariantId ? findVariantId.slug : null,
-                options: findVariantId ? findVariantId.options : null
-              };
-            });
-            console.log(order_items2);
-            try {
-              const response = await strapi.documents("api::order.order").update({
-                documentId: entry.documentId,
-                data: {
-                  order_item: order_items2,
-                  user_id
-                }
-              });
-              console.log({ response }, "update order");
-              result.push(response);
-            } catch (error) {
-              console.dir(error, { depth: null });
-            }
-          } else {
+          if (!entry) {
             try {
               const response = await strapi.documents("api::order.order").create({
                 data: data_order,
@@ -169,18 +148,18 @@ const controller = ({ strapi }) => ({
               console.log({ response }, "create order");
               result.push(response);
             } catch (error) {
-              console.dir(error, { depth: null });
+              console.log({ error: error.message }, "error create order");
+              return ctx.internalServerError("Failed to import.");
             }
           }
         }
       }
       return ctx.send({ message: `${result.length} rows imported.` });
     } catch (err) {
-      console.error("Import error:", err);
-      return ctx.internalServerError("Failed to import.");
+      console.log("Import error:", err);
     } finally {
       fs.unlink(filePath, (err) => {
-        if (err) console.error("Failed to delete temp file:", err);
+        if (err) console.log("Failed to delete temp file:", err);
       });
     }
   },
@@ -345,6 +324,10 @@ function formatVaNumber(value) {
     return str;
   }
   return str;
+}
+function excelDateToISO(excelDate) {
+  const date = new Date((excelDate - 25569) * 86400 * 1e3);
+  return date.toISOString();
 }
 const controllers = {
   controller
