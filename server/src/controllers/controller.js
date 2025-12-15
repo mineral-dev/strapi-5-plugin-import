@@ -291,10 +291,10 @@ const controller = ({ strapi }) => ({
               documentId: entry.documentId,
               data: payload
             })
-            console.log({ response })
+            console.log({ response }, " update")
             result.push(response)
           } catch (error) {
-            console.dir(error, { depth: null })
+            console.log(error.message, " | err update: ", entry.email)
           }
         }else{
           try {
@@ -302,22 +302,22 @@ const controller = ({ strapi }) => ({
               data: payload,
               populate: true
             })
-  
+            console.log({ response }, " create")
             result.push(response)
           } catch (error) {
-            console.dir(error, { depth: null })
+            console.log(error.message, " | err create: ", payload.email)
           }
         }
       }
 
-      return ctx.send({ message: `${result.length} rows imported.` });
+      return ctx.send({ message: `${result.length} rows imported users.` });
     } catch (err) {
-      console.error('Import error:', err);
-      return ctx.internalServerError('Failed to import.');
+      console.log('Import error:', err);
+      return ctx.internalServerError('Failed to import user.');
     } finally {
       // Hapus file temp
       fs.unlink(filePath, (err) => {
-        if (err) console.error('Failed to delete temp file:', err);
+        if (err) console.log('Failed to delete temp file user:', err);
       });
     }
   }
