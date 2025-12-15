@@ -119,7 +119,7 @@ const controller = ({ strapi }) => ({
                 product_variant_id: findVariantId ? String(findVariantId.id) : null,
                 sku: variant.sku,
                 options: findVariantId ? findVariantId.options : null,
-                name: findVariantId ? findVariantId.title : null,
+                name: findVariantId ? findVariantId.title : variant?.product_name ?? null,
                 slug: findVariantId ? findVariantId.slug : null,
                 regular_price: variant.price_regular,
                 sale_price: variant.price_sale,
@@ -151,10 +151,22 @@ const controller = ({ strapi }) => ({
           }
 
           if(entry) {
+            const order_items = (entry.order_item || []).map((variant) => {
+              const findVariantId = skus.find((item) => item.sku === variant.sku);
+              return ({
+                id: variant.id,
+                name: findVariantId ? findVariantId.title : null,
+                slug: findVariantId ? findVariantId.slug : null,
+              })
+            })
+            console.log(order_items)
+
             try {
               const response = await strapi.documents('api::order.order').update({ 
                 documentId: entry.documentId,
-                data: data_order
+                data: {
+                  order_item: order_items
+                }
               })
               console.log({ response }, "update order")
               result.push(response)
