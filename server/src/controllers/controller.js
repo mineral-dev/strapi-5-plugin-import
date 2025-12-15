@@ -157,6 +157,7 @@ const controller = ({ strapi }) => ({
                 id: variant.id,
                 name: findVariantId ? findVariantId.title : null,
                 slug: findVariantId ? findVariantId.slug : null,
+                options: findVariantId ? findVariantId.options : null,
               })
             })
             console.log(order_items)
@@ -165,7 +166,8 @@ const controller = ({ strapi }) => ({
               const response = await strapi.documents('api::order.order').update({ 
                 documentId: entry.documentId,
                 data: {
-                  order_item: order_items
+                  order_item: order_items,
+                  user_id: user_id,
                 }
               })
               console.log({ response }, "update order")
