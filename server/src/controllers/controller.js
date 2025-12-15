@@ -106,7 +106,7 @@ const controller = ({ strapi }) => ({
             user_id: user_id ? user_id : null,
             createdAt: props?.created_at,
             updatedAt: props?.updated_at,
-            cancelled_at: props?.cancelled_at ? normalizeDate(props?.cancelled_at) :  null
+            cancelled_at: normalizeDate(props?.cancelled_at)
           }
 
           const orderItems = JSON.parse(order_items)
@@ -179,6 +179,7 @@ const controller = ({ strapi }) => ({
           //     console.log(error)
           //   }
           // }
+
           if(!entry) {
             try {
               const response = await strapi.documents('api::order.order').create({
@@ -202,7 +203,6 @@ const controller = ({ strapi }) => ({
 
     } catch (err) {
       console.log('Import error:', err);
-      return ctx.internalServerError('Failed to import.');
     } finally {
       // Hapus file temp
       fs.unlink(filePath, (err) => {
