@@ -106,7 +106,7 @@ const controller = ({ strapi }) => ({
             user_id: user_id ? user_id : null,
             createdAt: props?.created_at,
             updatedAt: props?.updated_at,
-            cancelled_at: props.cancelled_at ? excelDateToISO( props.cancelled_at) :  null
+            cancelled_at: props?.cancelled_at ? normalizeDate(props?.cancelled_at) :  null
           }
 
           const orderItems = JSON.parse(order_items)
@@ -192,7 +192,7 @@ const controller = ({ strapi }) => ({
               
             } catch (error) {
               console.log({ error: error.message }, "error create order")
-              return ctx.internalServerError('Failed to import.');
+              // return ctx.internalServerError('Failed to import.');
             }
           }
         }
@@ -202,7 +202,7 @@ const controller = ({ strapi }) => ({
 
     } catch (err) {
       console.log('Import error:', err);
-      // return ctx.internalServerError('Failed to import.');
+      return ctx.internalServerError('Failed to import.');
     } finally {
       // Hapus file temp
       fs.unlink(filePath, (err) => {
@@ -410,7 +410,21 @@ function formatVaNumber(value) {
   return str;
 }
 
-function excelDateToISO(excelDate) {
-  const date = new Date((excelDate - 25569) * 86400 * 1000);
-  return date.toISOString();
+function normalizeDate(value) {
+  if (!value) return null;
+
+  if (dayjs(value).isValid()) {
+    return dayjs(value).toISOString();
+  }
+
+  if (typeof value === "number") {
+    const excelEpoch = dayjs("1899-12-30");
+    const date = excelEpoch.add(value, "day");
+
+    if (date.isValid()) {
+      return date.toISOString();
+    }
+  }
+
+  return null;
 }

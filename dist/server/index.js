@@ -97,7 +97,7 @@ const controller = ({ strapi }) => ({
             user_id: user_id ? user_id : null,
             createdAt: props?.created_at,
             updatedAt: props?.updated_at,
-            cancelled_at: props.cancelled_at ? excelDateToISO(props.cancelled_at) : null
+            cancelled_at: props?.cancelled_at ? normalizeDate(props?.cancelled_at) : null
           };
           const orderItems = JSON.parse(order_items);
           if (orderItems && orderItems?.length > 0) {
@@ -149,7 +149,6 @@ const controller = ({ strapi }) => ({
               result.push(response);
             } catch (error) {
               console.log({ error: error.message }, "error create order");
-              return ctx.internalServerError("Failed to import.");
             }
           }
         }
@@ -157,6 +156,7 @@ const controller = ({ strapi }) => ({
       return ctx.send({ message: `${result.length} rows imported.` });
     } catch (err) {
       console.log("Import error:", err);
+      return ctx.internalServerError("Failed to import.");
     } finally {
       fs.unlink(filePath, (err) => {
         if (err) console.log("Failed to delete temp file:", err);
@@ -325,9 +325,19 @@ function formatVaNumber(value) {
   }
   return str;
 }
-function excelDateToISO(excelDate) {
-  const date = new Date((excelDate - 25569) * 86400 * 1e3);
-  return date.toISOString();
+function normalizeDate(value) {
+  if (!value) return null;
+  if (dayjs(value).isValid()) {
+    return dayjs(value).toISOString();
+  }
+  if (typeof value === "number") {
+    const excelEpoch = dayjs("1899-12-30");
+    const date = excelEpoch.add(value, "day");
+    if (date.isValid()) {
+      return date.toISOString();
+    }
+  }
+  return null;
 }
 const controllers = {
   controller
